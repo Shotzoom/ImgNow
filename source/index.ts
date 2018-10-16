@@ -1,5 +1,6 @@
 import TransformPipe from "./TransformPipe";
-import { createFromImage } from './canvas';
+import { createFromImage, correctEXIFOrientation } from './canvas';
+import exif, { EXIFReadResult } from './exif';
 import { isElement, isBlob } from "./utils";
 
 type TransformContext = HTMLCanvasElement | HTMLImageElement | Blob;
@@ -14,31 +15,47 @@ function fromCanvas($canvas: HTMLCanvasElement, cb: IFactoryCallback): void {
 
 function fromImage($image: HTMLImageElement, cb: IFactoryCallback): void {
   createFromImage($image, (error, $canvas) => {
-    cb(error, new TransformPipe($canvas));
+    if (error != null) {
+      cb(error, null);
+    } else {
+      cb(null, new TransformPipe($canvas));
+    }
   })
 }
 
 function fromBlob(blob: Blob, cb: IFactoryCallback): void {
-  const $image = new Image();
-  const reader = new FileReader();
+  function onEXIFParsed(result: EXIFReadResult) {
+    const reader = new FileReader();
+    const $image = new Image();
 
-  reader.onload = () => {
-    $image.src = reader.result as string;
+    reader.onload = () => {
+      $image.src = reader.result as string;
 
-    createFromImage($image, (error, $canvas) => {
-      if (error != null) {
-        cb(error, null);
-      } else {
-        cb(null, new TransformPipe($canvas));
-      }
-    });
-  };
+      createFromImage($image, (error, $canvas) => {
+        if (error != null) {
+          cb(error, null);
+        } else if (result.success) {
+          cb(null, new TransformPipe(correctEXIFOrientation($canvas, result.data.orientation)));
+        } else {
+          cb(null, new TransformPipe($canvas));
+        }
+      });
+    };
 
-  reader.onerror = () => {
-    cb(new Error('Unable to read blob.'), null);
-  };
+    reader.onerror = () => {
+      cb(reader.error, null);
+    };
 
-  reader.readAsDataURL(blob);
+    reader.readAsDataURL(blob);
+  }
+
+  exif(blob, (error, data) => {
+    if (error != null) {
+      cb(error, null);
+    } else {
+      onEXIFParsed(data);
+    }
+  });
 }
 
 export default function factory(context: TransformContext, cb: IFactoryCallback) {

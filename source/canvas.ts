@@ -34,6 +34,44 @@ export function createFromImage($image: HTMLImageElement, cb: (error: Error, $ca
   }
 }
 
+export function correctEXIFOrientation($canvas: HTMLCanvasElement, orientation: number): HTMLCanvasElement {
+  const $result = create($canvas.width, $canvas.height);
+  const context = $result.getContext('2d');
+
+  if (orientation > 4 && orientation < 9) {
+    $result.width = $canvas.height;
+    $result.height = $canvas.width;
+  }
+
+  switch (orientation) {
+    case 2:
+      context.transform(-1, 0, 0, 1, $canvas.width, 0);
+      break;
+    case 3:
+      context.transform(-1, 0, 0, -1, $canvas.width, $canvas.height);
+      break;
+    case 4:
+      context.transform(1, 0, 0, -1, 0, $canvas.height);
+      break;
+    case 5:
+      context.transform(0, 1, 1, 0, 0, 0);
+      break;
+    case 6:
+      context.transform(0, 1, -1, 0, $canvas.height, 0);
+      break;
+    case 7:
+      context.transform(0, -1, -1, 0, $canvas.height, $canvas.width);
+      break;
+    case 8:
+      context.transform(0, -1, 1, 0, 0, $canvas.width);
+      break;
+  }
+
+  context.drawImage($canvas, 0, 0);
+
+  return $result;
+}
+
 export function scale($canvas: HTMLCanvasElement, x: number, y: number): HTMLCanvasElement {
   const $result = create($canvas.width * x, $canvas.height * y);
   const context = $result.getContext('2d');
