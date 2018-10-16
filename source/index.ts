@@ -24,7 +24,14 @@ function fromBlob(blob: Blob, cb: IFactoryCallback): void {
 
   reader.onload = () => {
     $image.src = reader.result as string;
-    fromImage($image, cb);
+
+    createFromImage($image, (error, $canvas) => {
+      if (error != null) {
+        cb(error, null);
+      } else {
+        cb(null, new TransformPipe($canvas));
+      }
+    });
   };
 
   reader.onerror = () => {
