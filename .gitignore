@@ -1,0 +1,6 @@
+bin
+lib
+cache
+node_modules
+types
+*.log
