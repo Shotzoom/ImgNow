@@ -1,42 +1,46 @@
-import TransformPipe, { ITransformPipe } from "./CanvasTransformPipe";
+import TransformPipe from "./TransformPipe";
 import { createFromImage } from './canvas';
 import { isElement, isBlob } from "./utils";
 
 type TransformContext = HTMLCanvasElement | HTMLImageElement | Blob;
 
-function fromCanvas($canvas: HTMLCanvasElement): ITransformPipe {
-  return new TransformPipe((cb) => {
-    cb(null, $canvas);
-  });
+interface IFactoryCallback {
+  (error: Error, pipe: TransformPipe): void
 }
 
-function fromImage($image: HTMLImageElement): ITransformPipe {
-  return new TransformPipe((cb) => {
-    createFromImage($image, cb);
-  });
+function fromCanvas($canvas: HTMLCanvasElement, cb: IFactoryCallback): void {
+  cb(null, new TransformPipe($canvas));
 }
 
-function fromBlob(blob: Blob): ITransformPipe {
-  return new TransformPipe((cb) => {
-    const $image = new Image();
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      $image.src = reader.result as string;
-      createFromImage($image, cb);
-    };
-
-    reader.onerror = () => {
-      cb(new Error('Unable to read blob.'), null);
-    };
-
-    reader.readAsDataURL(blob);
-  });
+function fromImage($image: HTMLImageElement, cb: IFactoryCallback): void {
+  createFromImage($image, (error, $canvas) => {
+    cb(error, new TransformPipe($canvas));
+  })
 }
 
-export default function create(context: TransformContext): ITransformPipe {
+function fromBlob(blob: Blob, cb: IFactoryCallback): void {
+  const $image = new Image();
+  const reader = new FileReader();
+
+  reader.onload = () => {
+    $image.src = reader.result as string;
+    fromImage($image, cb);
+  };
+
+  reader.onerror = () => {
+    cb(new Error('Unable to read blob.'), null);
+  };
+
+  reader.readAsDataURL(blob);
+}
+
+export default function factory(context: TransformContext, cb: IFactoryCallback) {
   if (context == null) {
     throw new TypeError('Expected a context.');
+  }
+
+  if (cb == null) {
+    throw new TypeError('Expected a callback.');
   }
 
   if (isElement(context)) {
@@ -44,13 +48,15 @@ export default function create(context: TransformContext): ITransformPipe {
 
     switch($element.tagName) {
       case 'IMG':
-        return fromImage($element as HTMLImageElement);
+        fromImage($element as HTMLImageElement, cb);
+        break;
       case 'CANVAS':
-        return fromCanvas($element as HTMLCanvasElement);
+        fromCanvas($element as HTMLCanvasElement, cb);
+        break;
       default:
         throw new Error(`Could not create TransformPipe from element type '${$element.tagName}'.`);
     }
   } else if (isBlob(context)) {
-    return fromBlob(context as Blob);
+    fromBlob(context as Blob, cb);
   }
 }

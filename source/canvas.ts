@@ -34,23 +34,6 @@ export function createFromImage($image: HTMLImageElement, cb: (error: Error, $ca
   }
 }
 
-export function toBlob($canvas: HTMLCanvasElement, cb: BlobCallback) {
-  const url = $canvas.toDataURL();
-  const data = url.split(',')[0];
-
-  setTimeout(function() {
-    var raw = atob(data);
-    var length = raw.length;
-    var buffer = new Uint8Array(length);
-
-    for (let i = 0; i < length; i++) {
-      buffer[i] = raw.charCodeAt(i);
-    }
-
-    cb(new Blob([buffer]));
-  });
-}
-
 export function scale($canvas: HTMLCanvasElement, x: number, y: number): HTMLCanvasElement {
   const $result = create($canvas.width * x, $canvas.height * y);
   const context = $result.getContext('2d');
